@@ -22,13 +22,42 @@ const freshState=()=>({habits:defaults.map((name,i)=>({id:'default-'+i,name,icon
 const validState=s=>s&&Array.isArray(s.habits)&&s.marks&&typeof s.marks==='object'&&!Array.isArray(s.marks);
 let state=freshState(),activeUser=null,stopListening=null,cloudRef=null,writeQueue=Promise.resolve(),pendingWrites=0;
 let session=0;
+
+// A calm loading screen while Firebase restores the saved session.
+// It is built here so the existing HTML and CSS do not need changes.
+const loadingStyle=document.createElement('style');
+loadingStyle.textContent=`
+  #journalLoading{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;min-height:100dvh;background:#faf7f0;color:#544a40;padding:28px;box-sizing:border-box;transition:opacity .25s ease;}
+  #journalLoading.is-hidden{opacity:0;pointer-events:none;}
+  #journalLoading .journal-loading-content{text-align:center;max-width:320px;width:100%;}
+  #journalLoading .journal-loading-icon{width:78px;height:78px;border-radius:26px;background:#eee5d7;display:grid;place-items:center;margin:0 auto 26px;font-size:36px;box-shadow:0 12px 35px rgba(96,76,52,.07);}
+  #journalLoading .journal-loading-title{font-family:Georgia,serif;font-size:27px;line-height:1.25;letter-spacing:-.5px;font-weight:normal;margin:0 0 12px;}
+  #journalLoading .journal-loading-subtitle{font-family:system-ui,-apple-system,sans-serif;font-size:13px;line-height:1.6;color:#92877a;margin:0 0 26px;}
+  #journalLoading .journal-loading-spinner{width:25px;height:25px;margin:0 auto;border:2.5px solid #e4d9ca;border-top-color:#8a9d83;border-radius:50%;animation:journal-spin .85s linear infinite;}
+  @keyframes journal-spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){#journalLoading .journal-loading-spinner{animation:none;border-top-color:#8a9d83}}
+`;
+document.head.append(loadingStyle);
+const loadingScreen=document.createElement('div');
+loadingScreen.id='journalLoading';
+loadingScreen.setAttribute('role','status');
+loadingScreen.setAttribute('aria-live','polite');
+loadingScreen.innerHTML='<div class="journal-loading-content"><div class="journal-loading-icon" aria-hidden="true">🌿</div><h1 class="journal-loading-title">Loading your journal…</h1><p class="journal-loading-subtitle">A little moment to get everything ready</p><div class="journal-loading-spinner" aria-hidden="true"></div></div>';
+document.body.append(loadingScreen);
+function setLoading(visible){
+  loadingScreen.classList.toggle('is-hidden',!visible);
+  loadingScreen.setAttribute('aria-hidden',String(!visible));
+}
+
 function showLogin(message=''){
+  setLoading(message==='Loading your journal…');
   document.getElementById('authGate').classList.remove('hide');
   document.getElementById('authMessage').textContent=message;
   document.querySelector('main.app').classList.add('hide');
   document.querySelector('nav.tabs').classList.add('hide');
 }
 function showApp(){
+  setLoading(false);
   document.getElementById('authGate').classList.add('hide');
   document.querySelector('main.app').classList.remove('hide');
   document.querySelector('nav.tabs').classList.remove('hide');
