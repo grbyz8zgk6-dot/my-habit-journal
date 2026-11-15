@@ -1,11 +1,11 @@
 'use strict';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js';
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyCaAVtScG22Mox5VyCm89nV31kUW6-GmMQ',
-  authDomain: 'my-habit-journal.firebaseapp.com',
+  authDomain: 'my-habit-journal.web.app',
   projectId: 'my-habit-journal',
   storageBucket: 'my-habit-journal.firebasestorage.app',
   messagingSenderId: '803512840598',
@@ -74,10 +74,18 @@ async function enterAccount(user){
 const loginBtn=document.getElementById('googleLogin');
 loginBtn.onclick=async()=>{
   loginBtn.disabled=true;document.getElementById('authMessage').textContent='Opening Google…';
-  try{await setPersistence(auth,browserLocalPersistence);await signInWithPopup(auth,provider);}
-  catch(err){document.getElementById('authMessage').textContent=err.code==='auth/popup-blocked'?'Safari blocked the sign-in popup. Open this page directly in Safari and try again.':'Sign-in failed: '+(err.code||err.message);}
-  finally{loginBtn.disabled=false;}
+  try{
+    await setPersistence(auth,browserLocalPersistence);
+    await signInWithRedirect(auth,provider);
+  }catch(err){
+    document.getElementById('authMessage').textContent='Sign-in failed: '+(err.code||err.message);
+    loginBtn.disabled=false;
+  }
 };
+getRedirectResult(auth).catch(err=>{
+  showLogin('Google sign-in failed: '+(err.code||err.message));
+  loginBtn.disabled=false;
+});
 document.getElementById('logout').onclick=async()=>{if(pendingWrites>0){await writeQueue.catch(()=>{});}await signOut(auth)};
 onAuthStateChanged(auth,enterAccount,err=>showLogin('Authentication error: '+err.message));
 
